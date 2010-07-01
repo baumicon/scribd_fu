@@ -313,6 +313,58 @@ describe "A Paperclip model" do
 
 end
 
+describe "With has_ipaper and args splat so you can override callbacks" do
+  before do
+    rebuild_model
+  end
+
+  describe "and is configured for ScribdFu" do
+    before do
+      config = YAML.load_file("spec/scribd_fu.yml")
+      File.stub!(:file?).with(ScribdFu::ConfigPath).and_return(true)
+      YAML.stub!(:load_file).and_return(config)
+
+
+      @attached_file = mock("attached_file", :url => "http://test.com/path/to/somewhere", :path => "/path/to/somewhere")
+
+      @attachment = Attachment.new
+      @attachment.stub!(:prefix).and_return("attachment")
+      @attachment.stub!(:attached_file).and_return(@attached_file)
+    end
+    describe "should ignore callbacks" do
+      before do
+        Attachment.class_eval do
+          has_ipaper(:uses => 'Paperclip', :disable_callbacks => true)
+        end
+      end
+      it "should not call upload_to_scribd" do
+        @attachment.should_not_receive(:upload_to_scribd)
+        @attachment.save
+      end
+      it "should not call destroy_ipaper_document" do
+        @attachment.should_not_receive(:destroy_ipaper_document)
+        @attachment.destroy
+      end
+    end
+    describe "should fire callbacks" do
+      before do
+        Attachment.class_eval do
+          has_ipaper(:uses => 'Paperclip')
+        end
+      end
+      it "should call upload_to_scribd" do
+        @attachment.should_receive(:upload_to_scribd)
+        @attachment.save
+      end
+      it "should call destroy_ipaper_document" do
+        @attachment.should_receive(:destroy_ipaper_document)
+        @attachment.destroy
+      end
+    end
+  end
+
+end
+
 describe "Viewing an iPaper document" do
   before do
     rebuild_model

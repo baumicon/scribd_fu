@@ -129,6 +129,16 @@ module ScribdFu
       after_save :upload_to_scribd # This *MUST* be an after_save
       before_destroy :destroy_ipaper_document
     end
+    def has_ipaper(*args)
+      options = args.extract_options!
+      check_environment
+      load_base_plugin(options[:uses])
+
+      include InstanceMethods
+      after_save :upload_to_scribd unless options[:disable_callbacks] == true
+      before_destroy :destroy_ipaper_document unless options[:disable_callbacks] == true
+      
+    end
 
     private
 
