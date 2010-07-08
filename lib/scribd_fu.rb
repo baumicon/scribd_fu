@@ -225,7 +225,7 @@ module ScribdFu
 
     # Responds true if the document has been converted.
     def conversion_successful?
-      ipaper_document && ipaper_document.conversion_status =~ /^DISPLAYABLE|DONE$/
+      ipaper_document && %w[DISPLAYABLE DONE].include?(ipaper_document.conversion_status)
     end
 
     # Responds true if there was a conversion error while converting to iPaper.
