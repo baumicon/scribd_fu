@@ -1,5 +1,7 @@
 ## MAC OS
 .DS_Store
+**/._*
+._*
 
 ## TEXTMATE
 *.tmproj
@@ -19,3 +21,4 @@ rdoc
 pkg
 
 ## PROJECT::SPECIFIC
+
