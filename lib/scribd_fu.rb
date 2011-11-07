@@ -69,7 +69,7 @@ module ScribdFu
         res = scribd_user.upload(:file => escape(file_path), :access => access_level)
         obj.update_attributes({:ipaper_id => res.doc_id, :ipaper_access_key => res.access_key})
       rescue
-        raise ScribdFuUploadError, "Sorry, but #{obj.class} ##{obj.id} could not be uploaded to Scribd"
+        raise ScribdFuUploadError, "Sorry, but #{obj.class} ##{obj.id} could not be uploaded to Scribd: #{res.inspect}"
       end
     end
 
