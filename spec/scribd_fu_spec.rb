@@ -14,7 +14,7 @@ describe "ScribdFu" do
 
   describe "that is missing a config file" do
     before do
-      File.should_receive(:file?).with("#{Rails.root}/config/scribd_fu.yml").and_return(false)
+      File.should_receive(:file?).with(Rails.root.join("config/scribd_fu.yml")).and_return(false)
     end
 
     it "should raise an error" do
