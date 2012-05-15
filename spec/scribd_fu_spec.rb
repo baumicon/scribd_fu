@@ -14,7 +14,7 @@ describe "ScribdFu" do
 
   describe "that is missing a config file" do
     before do
-      File.should_receive(:file?).with(Rails.root.join("config/scribd_fu.yml")).and_return(false)
+      File.should_receive(:file?).with("config/scribd_fu.yml").and_return(false)
     end
 
     it "should raise an error" do
@@ -63,7 +63,7 @@ describe "An AttachmentFu model" do
           describe "and has spaces in the filename" do
             it "should sanitize the file path" do
               res = mock('response', :doc_id => 1, :access_key => "ASDF")
-              @scribd_user.should_receive(:upload).with(:file => "some%20filename%20with%20spaces", :access => 'access').and_return(res)
+              @scribd_user.should_receive(:upload).with(:file => "./some%20filename%20with%20spaces", :access => 'access').and_return(res)
               ScribdFu::upload(@document, "some filename with spaces")
             end
 
@@ -89,6 +89,19 @@ describe "An AttachmentFu model" do
               @document.file_path.should == "http://s3.amazonaws.com/something.pdf"
             end
 
+          end
+
+          describe "and has a ipaper_my_user_id" do
+            before do
+              @document.stub!(:ipaper_my_user_id => '1234')
+            end
+
+            it "should pass the parameter when uploading" do
+              filename = File.join(File.dirname(__FILE__), 'sample.txt')
+              Scribd::API.instance.should_receive(:send_request).with('docs.upload', hash_including({:access => 'access', :my_user_id => '1234'})).and_return(REXML::Document.new("<rsp stat='ok'><doc_id>1</doc_id><access_key>ASDF</access_key></rsp>"))
+              Scribd::API.instance.should_receive(:send_request).with('docs.changeSettings', {:doc_ids => '1', :my_user_id => '1234'})
+              ScribdFu::upload(@document, filename)
+            end
           end
 
           describe "and uploading to Scribd succeeded" do
@@ -181,7 +194,7 @@ describe "A Paperclip model" do
         has_ipaper_and_uses 'Paperclip'
       end
 
-      @attached_file = mock("attached_file", :url => "http://test.com/path/to/somewhere", :path => "/path/to/somewhere")
+      @attached_file = mock("attached_file", :url => "http://test.com/path/to/somewhere", :path => "/path/to/somewhere", :options => {})
 
       @attachment = Attachment.new
       @attachment.stub!(:prefix).and_return("attachment")
@@ -204,16 +217,23 @@ describe "A Paperclip model" do
             @attachment.stub!(:scribdable? => true)
           end
 
-          describe "and has spaces in the filename" do
+          describe "and has special characters in the filename" do
             before do
               @attached_file.stub!(:path => "/path/to/somewhere with spaces.pdf")
               @attachment.stub!(:update_attributes)
             end
 
-            it "should sanitize the file path" do
+            it "should sanitize the file path spaces" do
               res = mock('response', :doc_id => 1, :access_key => "ASDF")
               @scribd_user.should_receive(:upload).with(:file => "/path/to/somewhere%20with%20spaces.pdf", :access => 'access').and_return(res)
               ScribdFu::upload(@attachment, "/path/to/somewhere with spaces.pdf")
+            end
+
+            it "should sanitize the file path accented characters" do
+              res = mock('response', :doc_id => 1, :access_key => "ASDF")
+              @scribd_user.should_receive(:upload).with(:file => "/path/to/new%20l%C3%ADder.pdf",
+                                                        :access => 'access').and_return(res)
+              ScribdFu::upload(@attachment, "/path/to/new líder.pdf")
             end
 
           end
@@ -221,6 +241,7 @@ describe "A Paperclip model" do
           context "and it was uploaded to S3" do
             before do
               @attached_file.stub!(:url => "http://s3.amazonaws.com/path/to/somewhere.pdf?0000000000")
+              @attached_file.stub!(:options => {:storage => :s3})
             end
 
             it "should strip the trailing cache string before sending to Scribd" do
@@ -231,6 +252,7 @@ describe "A Paperclip model" do
           context "and is destined for CloudFront" do
             before do
               @attached_file.stub!(:url => "http://a9.cloudfront.net/something.pdf?0000000000")
+              @attached_file.stub!(:options => {:storage => :s3})
             end
 
             it "should return the CloudFront URL, not the local filesystem path" do
@@ -379,17 +401,22 @@ describe "Viewing an iPaper document" do
 
     @document = Document.new
     @document.attributes = {:ipaper_id => 'doc_id', :ipaper_access_key => 'access_key'}
+    @document.stub!(:to_param).and_return(5)
   end
 
   it "should return this HTML by default" do
+    pending "this is not supported because uses html5 version"
     @document.display_ipaper.gsub(/\s{2,}/, "").should == "<script type=\"text/javascript\" src=\"http://www.scribd.com/javascripts/view.js\"></script><div id=\"embedded_flash\"></div><script type=\"text/javascript\">var scribd_doc = scribd.Document.getDoc(doc_id, 'access_key');scribd_doc.write(\"embedded_flash\");</script>\n"
   end
 
   it "should allow custom alt text" do
+    pending "this is not supported because uses html5 version"
     @document.display_ipaper(:alt => "something").should =~ /.*<div id="embedded_flash">something<\/div>.*/
   end
 
   it "should allow custom Javascript params" do
+    pending "this is not supported because uses html5 version"
+    pending "this is not supported because uses html5 version. need to fix"
     options = {:height => 100, :width => 100}
 
     @document.display_ipaper(options).should =~ /.*scribd_doc\.addParam\('height', '100'\);.*/
@@ -397,10 +424,35 @@ describe "Viewing an iPaper document" do
   end
 
   it "should allow not allow crazy custom Javascript params" do
+    pending "this is not supported because uses html5 version"
     options = {:some_dumb_setting => 100, :width => 100}
 
     @document.display_ipaper(options).should =~ /.*scribd_doc\.addParam\('width', '100'\);.*/
     @document.display_ipaper(options).should_not =~ /.*scribd_doc\.addParam\('some_dumb_setting', '100'\);.*/
   end
 
+  it "should send booleans as booleans" do
+    pending "this is not supported because uses html5 version"
+    options = {:hide_disabled_buttons => true}
+    @document.display_ipaper(options).should =~ /.*scribd_doc\.addParam\('hide_disabled_buttons', true\);.*/
+  end
+
+  it "should support passing in an id for the div" do
+    options = {:id => 'abc123'}
+    @document.display_ipaper(options).should =~ /id="scribd_abc123"/
+  end
+
+  it 'should put the ar to_param value as the embedded_id for the id param on the iframe if the id option is not passed' do
+    @document.display_ipaper.should =~ /id="scribd_5"/
+  end
+
+  it 'should support passing view_mode as an option' do
+    options = {:view_mode => 'slideshow'}
+    @document.display_ipaper(options).should =~ /view_mode=slideshow/
+  end
+
+  it 'should default to list if not passing view_mode as an option' do
+    @document.display_ipaper.should =~ /view_mode=list/
+  end
 end
+

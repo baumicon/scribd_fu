@@ -36,7 +36,7 @@ module ScribdFu
   # Available parameters for the JS API
   # http://www.scribd.com/publisher/api/api?method_name=Javascript+API
   Available_JS_Params = [ :height, :width, :page, :my_user_id, :search_query,
-                          :jsapi_version, :disable_related_docs, :mode, :auto_size ]
+                          :jsapi_version, :disable_related_docs, :mode, :auto_size, :hide_disabled_buttons, :hide_full_screen_button]
 
   class ScribdFuError < StandardError #:nodoc:
   end
@@ -66,7 +66,14 @@ module ScribdFu
     # Upload a file to Scribd
     def upload(obj, file_path)
       begin
-        res = scribd_user.upload(:file => escape(file_path), :access => access_level)
+        args = { :file => escape(file_path), :access => access_level }
+        res = if obj.ipaper_my_user_id
+          scribd_user
+          args[:my_user_id] = obj.ipaper_my_user_id
+          Scribd::Document.create(args)
+        else
+          scribd_user.upload(args)
+        end
         obj.update_attributes({:ipaper_id => res.doc_id, :ipaper_access_key => res.access_key})
       rescue
         raise ScribdFuUploadError, "Sorry, but #{obj.class} ##{obj.id} could not be uploaded to Scribd: #{res.inspect}"
@@ -80,10 +87,11 @@ module ScribdFu
 
     # Read, store, and return the ScribdFu config file's contents
     def config
-      raise ScribdFuError, "#{ConfigPath} does not exist" unless File.file?(ConfigPath)
+      path = defined?(Rails) ? File.join(Rails.root, ConfigPath) : ConfigPath
+      raise ScribdFuError, "#{path} does not exist" unless File.file?(path)
 
       # Load the config file and strip any whitespace from the values
-      @config ||= YAML.load_file(ConfigPath).each_pair{|k,v| {k=>v.to_s.strip}}.symbolize_keys!
+      @config ||= YAML.load_file(path).each_pair{|k,v| {k=>v.to_s.strip}}.symbolize_keys!
     end
 
     # Get the preferred access level for iPaper documents
@@ -100,7 +108,12 @@ module ScribdFu
 
     # Replace spaces with '%20' (needed by Paperclip models).
     def escape(str)
-      str.gsub(' ', '%20')
+      basename = File.basename(str, ".*")
+      File.join(File.dirname(str), "#{url_encode(basename)}#{File.extname(str)}").to_s
+    end
+
+    def url_encode(str)
+      str.to_s.gsub(/[^a-zA-Z0-9_\-.]/n){ sprintf("%%%02X", $&.unpack("C")[0]) }
     end
 
     # See if a URL is S3 or CloudFront based
@@ -120,13 +133,16 @@ module ScribdFu
   module ClassMethods
 
     # Load and inject ScribdFu goodies
-    def has_ipaper_and_uses(str)
+    # opts can be :on => :create, defaults to :on => :save
+    def has_ipaper_and_uses(str, opts = {:on => :save })
       check_environment
       load_base_plugin(str)
 
       include InstanceMethods
 
-      after_save :upload_to_scribd # This *MUST* be an after_save
+      attr_accessor :ipaper_my_user_id
+
+      send("after_#{opts[:on]}", :upload_to_scribd) # This *MUST* be an after_save
       before_destroy :destroy_ipaper_document
     end
     def has_ipaper(*args)
@@ -146,7 +162,6 @@ module ScribdFu
       def check_environment
         load_rscribd
         check_config
-        check_fields
       end
 
       def check_config
@@ -172,12 +187,6 @@ module ScribdFu
       def load_paperclip
         require 'scribd_fu/paperclip'
         include ScribdFu::Paperclip::InstanceMethods
-      end
-
-      # Ensure ScribdFu-centric attributes exist
-      def check_fields
-        fields = %w{ipaper_id ipaper_access_key}.inject([]){|stack, f| stack << "#{name}##{f}" unless column_names.include?(f); stack}
-        raise ScribdFuError, "These fields are missing: #{fields.to_sentence}" if fields.size > 0
       end
 
       # Load either AttachmentFu or Paperclip-specific methods
@@ -245,30 +254,13 @@ module ScribdFu
 
     # Display the iPaper document in a view
     def display_ipaper(options = {})
+      id = options.delete(:id) || to_param
+      view_mode = options.delete(:view_mode) || 'list'
+
       <<-END
-        <script type="text/javascript" src="http://www.scribd.com/javascripts/view.js"></script>
-        <div id="embedded_flash">#{options.delete(:alt)}</div>
-        <script type="text/javascript">
-          var scribd_doc = scribd.Document.getDoc(#{ipaper_id}, '#{ipaper_access_key}');
-          #{js_params(options)}
-          scribd_doc.write("embedded_flash");
-        </script>
+        <iframe class="scribd_iframe_embed" src="http://www.scribd.com/embeds/#{ipaper_id}/content?start_page=1&view_mode=#{view_mode}&access_key=#{ipaper_access_key}" data-auto-height="true" scrolling="no" id="scribd_#{id}" width="100%" frameborder="0"></iframe><script type="text/javascript">(function() { var scribd = document.createElement("script"); scribd.type = "text/javascript"; scribd.async = true; scribd.src = "http://www.scribd.com/javascripts/embed_code/inject.js"; var s = document.getElementsByTagName("script")[0]; s.parentNode.insertBefore(scribd, s); })();</script>
       END
     end
-
-
-    private
-
-      # Check and collect any Javascript params that might have been passed in
-      def js_params(options)
-        opt = []
-
-        options.each_pair do |k, v|
-          opt << "scribd_doc.addParam('#{k}', '#{v}');" if Available_JS_Params.include?(k)
-        end
-
-        opt.compact.join("\n")
-      end
 
   end
 
@@ -276,3 +268,4 @@ end
 
 # Let's do this.
 ActiveRecord::Base.send(:include, ScribdFu) if Object.const_defined?("ActiveRecord")
+

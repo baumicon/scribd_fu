@@ -35,8 +35,5 @@ def rebuild_model options = {}
   Object.const_set("Attachment", Class.new(ActiveRecord::Base))  
 end
 
-Spec::Runner.configure do |config|
-end
-
 
 # EOF
