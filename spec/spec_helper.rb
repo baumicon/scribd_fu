@@ -10,10 +10,10 @@ $LOAD_PATH << File.join(ROOT, 'lib', 'scribd_fu')
 
 require File.join(ROOT, 'lib', 'scribd_fu.rb')
 
-ENV['RAILS_ENV'] ||= 'test'
+ENV['Rails.env'] ||= 'test'
 
 config = YAML::load(IO.read(File.dirname(__FILE__) + '/database.yml'))
-ActiveRecord::Base.establish_connection(config[ENV['RAILS_ENV'] || 'test'])
+ActiveRecord::Base.establish_connection(config[ENV['Rails.env'] || 'test'])
 
 def rebuild_model options = {}
   ActiveRecord::Base.connection.create_table :documents, :force => true do |table|

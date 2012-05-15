@@ -25,7 +25,7 @@ module ScribdFu
         if ScribdFu::amazon_based?(public_filename)
           path = public_filename
         else
-          path = "#{RAILS_ROOT}/public#{public_filename}"
+          path = "#{Rails.root}/public#{public_filename}"
         end
 
         ScribdFu::strip_cache_string(path)
