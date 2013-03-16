@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    scribd_fu (2.1.0)
+    scribd_fu (2.2.0)
       rscribd
 
 GEM
