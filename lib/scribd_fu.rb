@@ -258,7 +258,7 @@ module ScribdFu
       view_mode = options.delete(:view_mode) || 'list'
 
       <<-END
-      <script type="text/javascript" src='http://www.scribd.com/javascripts/scribd_api.js'></script> <div id='embedded_doc'><a href='http://www.scribd.com'>Scribd</a></div> <script type='text/javascript'> var scribd_doc = scribd.Document.getDoc(#{ipaper_id}, '#{ipaper_access_key}'); scribd_doc.addParam('jsapi_version', 2); scribd_doc.addParam('default_embed_format', 'html5'); scribd_doc.addParam('auto_size', true); scribd_doc.write('embedded_doc'); </script>
+      <div id='embedded_doc'><a href='//www.scribd.com'>Scribd</a></div> <script type='text/javascript'> var scribd_doc = scribd.Document.getDoc(#{ipaper_id}, '#{ipaper_access_key}'); scribd_doc.addParam('jsapi_version', 2); scribd_doc.addParam('default_embed_format', 'html5'); scribd_doc.addParam('auto_size', true); scribd_doc.write('embedded_doc'); </script>
       END
     end
 
