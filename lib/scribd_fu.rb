@@ -7,6 +7,7 @@ module ScribdFu
     'application/pdf',
     'application/msword',
     'application/mspowerpoint',
+    'application/powerpoint',
     'application/vnd.ms-powerpoint',
     'application/excel',
     'application/vnd.ms-excel',
@@ -153,7 +154,7 @@ module ScribdFu
       include InstanceMethods
       after_save :upload_to_scribd unless options[:disable_callbacks] == true
       before_destroy :destroy_ipaper_document unless options[:disable_callbacks] == true
-      
+
     end
 
     private
@@ -260,8 +261,8 @@ module ScribdFu
       <<-END
       <div id='embedded_doc'><a href='//www.scribd.com'>Scribd</a></div>
       <script type='text/javascript'>
-        var scribd_doc = scribd.Document.getDoc(#{ipaper_id}, '#{ipaper_access_key}'); 
-        scribd_doc.addParam('jsapi_version', 2); 
+        var scribd_doc = scribd.Document.getDoc(#{ipaper_id}, '#{ipaper_access_key}');
+        scribd_doc.addParam('jsapi_version', 2);
         scribd_doc.addParam('default_embed_format', 'html5');
         scribd_doc.addParam('auto_size', true);
         scribd_doc.addParam('mode', 'scroll');
@@ -276,4 +277,3 @@ end
 
 # Let's do this.
 ActiveRecord::Base.send(:include, ScribdFu) if Object.const_defined?("ActiveRecord")
-
